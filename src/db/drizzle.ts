@@ -1,6 +1,18 @@
-import { config } from "dotenv";
-import { drizzle } from 'drizzle-orm/neon-http';
+import { drizzle } from "drizzle-orm/neon-http";
 
-config({ path: ".env" }); // or .env.local
+function createDb() {
+  const url = process.env.DATABASE_URL;
+  if (!url) {
+    throw new Error("DATABASE_URL is not set");
+  }
+  return drizzle(url);
+}
 
-export const db = drizzle(process.env.DATABASE_URL!);
+let _db: ReturnType<typeof createDb> | null = null;
+
+export function getDb() {
+  if (!_db) {
+    _db = createDb();
+  }
+  return _db;
+}

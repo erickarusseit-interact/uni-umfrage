@@ -1,0 +1,101 @@
+{
+  "version": "8",
+  "dialect": "postgres",
+  "id": "9bec28fb-a520-490d-aa70-05f07e163660",
+  "prevIds": [
+    "9941e97b-7190-437d-b124-cac6de1da97a"
+  ],
+  "ddl": [
+    {
+      "isRlsEnabled": false,
+      "name": "participants",
+      "entityType": "tables",
+      "schema": "public"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": {
+        "type": "always",
+        "name": "participants_id_seq",
+        "increment": "1",
+        "startWith": "1",
+        "minValue": "1",
+        "maxValue": "2147483647",
+        "cache": 1,
+        "cycle": false
+      },
+      "name": "id",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "participants"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "age",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "participants"
+    },
+    {
+      "type": "varchar(50)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "gender",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "participants"
+    },
+    {
+      "type": "varchar(100)",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 0,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "education_level",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "participants"
+    },
+    {
+      "type": "integer",
+      "typeSchema": null,
+      "notNull": true,
+      "dimensions": 1,
+      "default": null,
+      "generated": null,
+      "identity": null,
+      "name": "antworten",
+      "entityType": "columns",
+      "schema": "public",
+      "table": "participants"
+    },
+    {
+      "columns": [
+        "id"
+      ],
+      "nameExplicit": false,
+      "name": "participants_pkey",
+      "schema": "public",
+      "table": "participants",
+      "entityType": "pks"
+    }
+  ],
+  "renames": []
+}
