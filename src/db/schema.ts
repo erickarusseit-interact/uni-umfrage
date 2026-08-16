@@ -33,8 +33,6 @@ export const surveyResponses = pgTable("survey_responses", {
   intent4: integer("intent_4"),
   /** Rohwert 1–7; korrekt ist 5 („stimme eher zu“). Zählt nicht zur Skala. */
   attentionCheck: integer("attention_check"),
-  mc1: integer("mc_1"),
-  mc2: integer("mc_2"),
   age: integer("age"),
   gender: varchar("gender", { length: 50 }),
   educationLevel: varchar("education_level", { length: 100 }),
