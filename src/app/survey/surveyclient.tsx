@@ -1,13 +1,15 @@
 "use client";
 
 import { useEffect, useState, type FormEvent } from "react";
-import { saveSurveyResponse } from "@/src/actions/antworten";
+import { saveScreeningOut, saveSurveyResponse } from "@/src/actions/antworten";
 import {
-  EXPOSURE_MS,
+  LIKERT_LABELS,
   LIKERT_VALUES,
   educationOptions,
   genderOptions,
+  isEligible,
   questionBlocks,
+  screeningQuestions,
   treatments,
   type LikertId,
   type TreatmentGroup,
@@ -15,7 +17,16 @@ import {
 
 const LIKERT_IDS = questionBlocks.flatMap((block) => block.items.map((item) => item.id));
 
-type Step = "consent" | "loading" | "brand" | "stimulus" | "questions" | "demographics" | "done";
+type Step =
+  | "consent"
+  | "screening"
+  | "loading"
+  | "brand"
+  | "stimulus"
+  | "questions"
+  | "demographics"
+  | "done"
+  | "screenedOut";
 
 const emptyAnswers = {} as Partial<Record<LikertId, number>>;
 
@@ -35,6 +46,48 @@ function preloadImages(urls: readonly string[]): Promise<void> {
         }),
     ),
   ).then(() => undefined);
+}
+
+function YesNoRow({
+  id,
+  label,
+  value,
+  onChange,
+}: {
+  id: string;
+  label: string;
+  value: boolean | undefined;
+  onChange: (value: boolean) => void;
+}) {
+  return (
+    <fieldset className="space-y-3">
+      <legend className="text-base font-medium text-black">{label}</legend>
+      <div className="flex gap-6">
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="radio"
+            name={id}
+            checked={value === true}
+            onChange={() => onChange(true)}
+            className="h-4 w-4 accent-black"
+            required
+          />
+          <span>Ja</span>
+        </label>
+        <label className="flex cursor-pointer items-center gap-2">
+          <input
+            type="radio"
+            name={id}
+            checked={value === false}
+            onChange={() => onChange(false)}
+            className="h-4 w-4 accent-black"
+            required
+          />
+          <span>Nein</span>
+        </label>
+      </div>
+    </fieldset>
+  );
 }
 
 function LikertRow({
@@ -63,6 +116,7 @@ function LikertRow({
                 checked={value === n}
                 onChange={() => onChange(id, n)}
                 className="h-4 w-4 accent-black"
+                aria-label={LIKERT_LABELS[n]}
                 required
               />
               <span className="text-sm">{n}</span>
@@ -78,6 +132,8 @@ function LikertRow({
 export default function SurveyClient() {
   const [step, setStep] = useState<Step>("consent");
   const [group, setGroup] = useState<TreatmentGroup | null>(null);
+  const [s1, setS1] = useState<boolean | undefined>(undefined);
+  const [s2, setS2] = useState<boolean | undefined>(undefined);
   const [frameIndex, setFrameIndex] = useState(0);
   const [answers, setAnswers] = useState(emptyAnswers);
   const [age, setAge] = useState("");
@@ -106,24 +162,31 @@ export default function SurveyClient() {
     };
   }, [step, group]);
 
-  useEffect(() => {
-    if (step !== "stimulus" || group === null) {
+  const startScreening = () => {
+    setStep("screening");
+  };
+
+  const submitScreening = async (event: FormEvent) => {
+    event.preventDefault();
+    setError(null);
+
+    if (s1 === undefined || s2 === undefined) {
+      setError("Bitte beantworten Sie beide Fragen.");
       return;
     }
 
-    const frames = treatments[group].images;
-    const timeout = window.setTimeout(() => {
-      if (frameIndex + 1 < frames.length) {
-        setFrameIndex((index) => index + 1);
-      } else {
-        setStep("questions");
+    if (!isEligible(s1, s2)) {
+      setSubmitting(true);
+      const result = await saveScreeningOut({ s1, s2 });
+      setSubmitting(false);
+      if (!result.success) {
+        setError(result.error);
+        return;
       }
-    }, EXPOSURE_MS);
+      setStep("screenedOut");
+      return;
+    }
 
-    return () => window.clearTimeout(timeout);
-  }, [step, group, frameIndex]);
-
-  const startSurvey = () => {
     setGroup(pickGroup());
     setFrameIndex(0);
     setStep("loading");
@@ -132,6 +195,8 @@ export default function SurveyClient() {
   const restart = () => {
     setStep("consent");
     setGroup(null);
+    setS1(undefined);
+    setS2(undefined);
     setFrameIndex(0);
     setAnswers(emptyAnswers);
     setAge("");
@@ -149,7 +214,7 @@ export default function SurveyClient() {
     event.preventDefault();
     setError(null);
     if (!allLikertAnswered) {
-      setError("Bitte beantworte alle Fragen.");
+      setError("Bitte beantworten Sie alle Fragen.");
       return;
     }
     setStep("demographics");
@@ -159,34 +224,46 @@ export default function SurveyClient() {
     event.preventDefault();
     setError(null);
 
-    if (group === null || !allLikertAnswered) {
-      setError("Bitte beantworte alle Fragen.");
+    if (group === null || s1 === undefined || s2 === undefined || !allLikertAnswered) {
+      setError("Bitte beantworten Sie alle Fragen.");
       return;
     }
 
     const parsedAge = Number.parseInt(age, 10);
     if (!Number.isInteger(parsedAge) || parsedAge < 16 || parsedAge > 99) {
-      setError("Bitte gib ein gültiges Alter an.");
+      setError("Bitte geben Sie ein gültiges Alter an.");
       return;
     }
     if (!gender || !educationLevel) {
-      setError("Bitte fülle alle demografischen Angaben aus.");
+      setError("Bitte füllen Sie alle demografischen Angaben aus.");
       return;
     }
 
     setSubmitting(true);
     const result = await saveSurveyResponse({
+      s1,
+      s2,
       treatmentGroup: group,
       visawi1: answers.visawi1!,
       visawi2: answers.visawi2!,
       visawi3: answers.visawi3!,
       visawi4: answers.visawi4!,
+      aufwand1: answers.aufwand1!,
+      aufwand2: answers.aufwand2!,
+      aufwand3: answers.aufwand3!,
       comp1: answers.comp1!,
       comp2: answers.comp2!,
       comp3: answers.comp3!,
+      comp4: answers.comp4!,
       trust1: answers.trust1!,
       trust2: answers.trust2!,
       trust3: answers.trust3!,
+      trust4: answers.trust4!,
+      intent1: answers.intent1!,
+      intent2: answers.intent2!,
+      intent3: answers.intent3!,
+      intent4: answers.intent4!,
+      attentionCheck: answers.attentionCheck!,
       mc1: answers.mc1!,
       mc2: answers.mc2!,
       age: parsedAge,
@@ -207,9 +284,10 @@ export default function SurveyClient() {
       <main className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-center px-6 py-16">
         <h1 className="text-2xl font-semibold tracking-tight">Studie zur Wahrnehmung digitaler Oberflächen</h1>
         <p className="mt-6 leading-relaxed text-neutral-800">
-          In dieser kurzen Umfrage lesen Sie zuerst eine kurze Beschreibung eines
-          Projektmanagement-Tools und sehen danach nacheinander drei Ausschnitte der Oberfläche.
-          Anschließend beantworten Sie einige Fragen zu Ihrem Eindruck.
+          In dieser kurzen Umfrage beantworten Sie zunächst zwei Fragen zu Ihrer beruflichen
+          Nutzung von Projektmanagement-Software. Anschließend lesen Sie eine kurze Beschreibung
+          eines Tools und sehen nacheinander drei Ausschnitte der Oberfläche. Danach folgen
+          einige Fragen zu Ihrem Eindruck.
         </p>
         <p className="mt-4 leading-relaxed text-neutral-800">
           Die Teilnahme ist freiwillig, anonym und dauert etwa fünf Minuten. Es werden keine
@@ -221,10 +299,65 @@ export default function SurveyClient() {
         </p>
         <button
           type="button"
-          onClick={startSurvey}
+          onClick={startScreening}
           className="mt-10 w-full rounded-[12px] bg-black px-6 py-3 text-white"
         >
           Teilnehmen
+        </button>
+      </main>
+    );
+  }
+
+  if (step === "screening") {
+    return (
+      <main className="mx-auto flex min-h-full w-full max-w-xl flex-col justify-center px-6 py-16">
+        <form onSubmit={submitScreening} className="space-y-10">
+          <div className="space-y-3">
+            <h2 className="text-2xl font-semibold tracking-tight">Teilnahmevoraussetzungen</h2>
+            <p className="leading-relaxed text-neutral-800">
+              Bitte beantworten Sie zunächst zwei kurze Fragen zu Ihrer beruflichen Tätigkeit.
+            </p>
+          </div>
+
+          {screeningQuestions.map((question) => (
+            <YesNoRow
+              key={question.id}
+              id={question.id}
+              label={question.label}
+              value={question.id === "s1" ? s1 : s2}
+              onChange={question.id === "s1" ? setS1 : setS2}
+            />
+          ))}
+
+          {error && <p className="text-red-700">{error}</p>}
+
+          <button
+            type="submit"
+            disabled={submitting}
+            className="w-full rounded-[12px] bg-black px-6 py-3 text-white disabled:opacity-50"
+          >
+            {submitting ? "Wird gespeichert …" : "Weiter"}
+          </button>
+        </form>
+      </main>
+    );
+  }
+
+  if (step === "screenedOut") {
+    return (
+      <main className="mx-auto flex min-h-full w-full max-w-xl flex-col items-center justify-center px-6 py-20 text-center">
+        <h2 className="text-2xl font-semibold tracking-tight">Vielen Dank</h2>
+        <p className="mt-4 text-neutral-700">
+          Für diese Studie werden ausschließlich regelmäßig Nutzende von Arbeits- oder
+          Projektmanagement-Software gesucht, die nicht selbst an der Konzeption, Gestaltung
+          oder Entwicklung solcher Software beteiligt sind. Ihre Angaben wurden gespeichert.
+        </p>
+        <button
+          type="button"
+          onClick={restart}
+          className="mt-10 rounded-[12px] bg-black px-6 py-3 text-white"
+        >
+          Zurück zum Start
         </button>
       </main>
     );
@@ -263,7 +396,7 @@ export default function SurveyClient() {
     const frames = treatments[group].images;
     const isFirst = frameIndex === 0;
     const isLast = frameIndex === frames.length - 1;
-  
+
     return (
       <main className="flex min-h-full flex-col items-center justify-center gap-6 bg-white px-4 py-8">
         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -301,8 +434,15 @@ export default function SurveyClient() {
         <form onSubmit={goToDemographics} className="space-y-12">
           <h2 className="text-2xl font-semibold tracking-tight">Ihre Einschätzung</h2>
           <p className="text-sm text-neutral-600">
-            1 = stimme gar nicht zu, 7 = stimme voll zu
+            Bitte geben Sie an, inwieweit Sie den Aussagen zustimmen.
           </p>
+          <ul className="grid grid-cols-1 gap-1 text-sm text-neutral-600 sm:grid-cols-2">
+            {LIKERT_VALUES.map((n) => (
+              <li key={n}>
+                {n} = {LIKERT_LABELS[n]}
+              </li>
+            ))}
+          </ul>
 
           {questionBlocks.map((block) => (
             <section key={block.title} className="space-y-8">
