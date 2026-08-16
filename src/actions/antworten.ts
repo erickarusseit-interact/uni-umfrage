@@ -30,9 +30,6 @@ export type SurveyPayload = ScreeningPayload & {
   intent2: number;
   intent3: number;
   intent4: number;
-  attentionCheck: number;
-  mc1: number;
-  mc2: number;
   age: number;
   gender: string;
   educationLevel: string;
@@ -58,9 +55,6 @@ const LIKERT_KEYS = [
   "intent2",
   "intent3",
   "intent4",
-  "attentionCheck",
-  "mc1",
-  "mc2",
 ] as const;
 
 function isLikert(value: unknown): value is number {
@@ -150,9 +144,6 @@ export async function saveSurveyResponse(
     intent2: data.intent2,
     intent3: data.intent3,
     intent4: data.intent4,
-    attentionCheck: data.attentionCheck,
-    mc1: data.mc1,
-    mc2: data.mc2,
     age: data.age,
     gender: data.gender.trim(),
     educationLevel: data.educationLevel.trim(),

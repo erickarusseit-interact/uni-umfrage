@@ -51,10 +51,7 @@ export type LikertId =
   | "intent1"
   | "intent2"
   | "intent3"
-  | "intent4"
-  | "attentionCheck"
-  | "mc1"
-  | "mc2";
+  | "intent4";
 
 export type LikertItem = { id: LikertId; label: string };
 
@@ -129,27 +126,12 @@ export const questionBlocks: QuestionBlock[] = [
         label: "Ich könnte mich auf AuraFlow verlassen.",
       },
       {
-        id: "attentionCheck",
-        label:
-          "Bitte wählen Sie bei dieser Aussage die Antwortoption „stimme eher zu“, um zu zeigen, dass Sie die Aussagen aufmerksam lesen.",
-      },
-      {
         id: "intent3",
         label: "AuraFlow würde alles daransetzen, mich zufriedenzustellen.",
       },
       {
         id: "intent4",
         label: "AuraFlow würde mich in irgendeiner Form entschädigen, falls es ein Problem gäbe.",
-      },
-    ],
-  },
-  {
-    title: "Eindruck der Oberfläche",
-    items: [
-      { id: "mc1", label: "Die Oberfläche wirkte visuell hochwertig gestaltet." },
-      {
-        id: "mc2",
-        label: "Mir sind visuelle Fehler oder Unstimmigkeiten aufgefallen.",
       },
     ],
   },
@@ -182,9 +164,6 @@ export const LIKERT_LABELS = {
   6: "stimme zu",
   7: "stimme voll zu",
 } as const;
-
-/** Korrekte Antwort des eingebetteten Aufmerksamkeitschecks (zählt nicht zur Skala). */
-export const ATTENTION_CHECK_VALUE = 5;
 
 export const screeningQuestions = [
   {
